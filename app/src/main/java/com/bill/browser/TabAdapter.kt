@@ -35,7 +35,7 @@ class TabAdapter(
         holder.tvTitle.text = displayTitle
 
         if (tab.id == currentTabId) {
-            holder.tvTitle.setTextColor(holder.itemView.context.getColor(R.color.colorPrimary))
+            holder.tvTitle.setTextColor(holder.itemView.context.getColor(R.color.purple_500))
         } else {
             holder.tvTitle.setTextColor(holder.itemView.context.getColor(android.R.color.black))
         }
