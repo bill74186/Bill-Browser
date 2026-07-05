@@ -69,7 +69,17 @@ class MainActivity : AppCompatActivity() {
             override fun shouldOverrideUrlLoading(
                 view: WebView?, request: WebResourceRequest?
             ): Boolean {
-                view?.loadUrl(request?.url?.toString().orEmpty())
+                val url = request?.url?.toString().orEmpty()
+                if (url.startsWith("http://") || url.startsWith("https://")) {
+                    view?.loadUrl(url)
+                    return true
+                }
+                try {
+                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                    intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    view?.context?.startActivity(intent)
+                } catch (e: Exception) {
+                }
                 return true
             }
 
