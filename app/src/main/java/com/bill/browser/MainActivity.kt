@@ -52,9 +52,8 @@ class MainActivity : AppCompatActivity() {
             loadWithOverviewMode = true
             useWideViewPort = true
             mediaPlaybackRequiresUserGesture = true
-            // 安全性：禁止文件协议越权访问
-            allowFileAccess = false
-            allowContentAccess = false
+            allowFileAccess = true
+            allowContentAccess = true
         }
 
         binding.webView.webViewClient = object : WebViewClient() {
@@ -70,7 +69,9 @@ class MainActivity : AppCompatActivity() {
                     progress = 0
                     visibility = View.VISIBLE
                 }
-                url?.let { binding.etUrl.setText(it) }
+                url?.let {
+                    binding.etUrl.setText(if (it.startsWith("file://")) getString(R.string.app_name) else it)
+                }
                 updateNavButtons()
             }
 

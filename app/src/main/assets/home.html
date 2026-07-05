@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>比尔浏览器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            margin-top: 40px;
+        }
+        .logo {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 12px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+        }
+        .title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+        }
+        .search-box {
+            background: white;
+            border-radius: 24px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            margin-bottom: 24px;
+        }
+        .search-icon {
+            width: 20px;
+            height: 20px;
+            color: #999;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+        .search-input {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-size: 15px;
+            color: #333;
+            background: transparent;
+        }
+        .search-input::placeholder {
+            color: #bbb;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            padding-bottom: 40px;
+        }
+        .shortcut {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+        .shortcut:active {
+            transform: scale(0.95);
+        }
+        .icon-wrapper {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+            font-size: 24px;
+            color: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .shortcut-name {
+            font-size: 12px;
+            color: #555;
+            text-align: center;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .color-1 { background: linear-gradient(135deg, #FF5722, #E64A19); }
+        .color-2 { background: linear-gradient(135deg, #4CAF50, #388E3C); }
+        .color-3 { background: linear-gradient(135deg, #2196F3, #1976D2); }
+        .color-4 { background: linear-gradient(135deg, #FF9800, #F57C00); }
+        .color-5 { background: linear-gradient(135deg, #9C27B0, #7B1FA2); }
+        .color-6 { background: linear-gradient(135deg, #00BCD4, #0097A7); }
+        .color-7 { background: linear-gradient(135deg, #FF5252, #E53935); }
+        .color-8 { background: linear-gradient(135deg, #607D8B, #455A64); }
+        @media (prefers-color-scheme: dark) {
+            body { background: #121212; }
+            .title { color: #fff; }
+            .search-box { background: #222; }
+            .search-input { color: #fff; }
+            .search-input::placeholder { color: #666; }
+            .search-icon { color: #666; }
+            .shortcut-name { color: #aaa; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">B</div>
+        <div class="title">比尔浏览器</div>
+    </div>
+
+    <div class="search-box">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" class="search-input" id="searchInput" placeholder="搜索或输入网址" onkeydown="handleSearch(event)">
+    </div>
+
+    <div class="grid" id="grid">
+        <div class="shortcut" onclick="openUrl('https://www.baidu.com')">
+            <div class="icon-wrapper color-1">百</div>
+            <div class="shortcut-name">百度</div>
+        </div>
+        <div class="shortcut" onclick="openUrl('https://www.google.com')">
+            <div class="icon-wrapper color-2">G</div>
+            <div class="shortcut-name">Google</div>
+        </div>
+        <div class="shortcut" onclick="openUrl('https://github.com')">
+            <div class="icon-wrapper color-8">GH</div>
+            <div class="shortcut-name">GitHub</div>
+        </div>
+        <div class="shortcut" onclick="openUrl('https://www.bing.com')">
+            <div class="icon-wrapper color-3">B</div>
+            <div class="shortcut-name">必应</div>
+        </div>
+        <div class="shortcut" onclick="openUrl('https://www.zhihu.com')">
+            <div class="icon-wrapper color-4">知</div>
+            <div class="shortcut-name">知乎</div>
+        </div>
+        <div class="shortcut" onclick="openUrl('https://www.bilibili.com')">
+            <div class="icon-wrapper color-7">B</div>
+            <div class="shortcut-name">B站</div>
+        </div>
+        <div class="shortcut" onclick="openUrl('https://www.douyin.com')">
+            <div class="icon-wrapper color-5">抖</div>
+            <div class="shortcut-name">抖音</div>
+        </div>
+        <div class="shortcut" onclick="openUrl('https://www.taobao.com')">
+            <div class="icon-wrapper color-6">淘</div>
+            <div class="shortcut-name">淘宝</div>
+        </div>
+    </div>
+
+    <script>
+        function openUrl(url) {
+            window.location.href = url;
+        }
+        function handleSearch(e) {
+            if (e.key === 'Enter') {
+                var query = e.target.value.trim();
+                if (!query) return;
+                if (query.startsWith('http://') || query.startsWith('https://')) {
+                    window.location.href = query;
+                } else if (query.includes('.') && !query.includes(' ')) {
+                    window.location.href = 'https://' + query;
+                } else {
+                    window.location.href = 'https://www.baidu.com/s?wd=' + encodeURIComponent(query);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
