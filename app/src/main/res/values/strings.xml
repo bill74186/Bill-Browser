@@ -9,6 +9,10 @@
     <string name="cd_tabs">标签页</string>
     <string name="cd_menu">菜单</string>
     <string name="cd_go">前往</string>
+    <string name="cd_close_tab">关闭标签</string>
+    <string name="cd_new_tab">新建标签</string>
+    <string name="tabs">标签页</string>
+    <string name="new_tab">+ 新建标签页</string>
     <string name="tabs_hint">多标签功能开发中</string>
     <string name="menu_share">分享页面</string>
     <string name="menu_copy_url">复制链接</string>

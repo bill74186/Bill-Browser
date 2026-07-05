@@ -12,11 +12,17 @@ import android.webkit.WebViewClient
 import android.widget.PopupMenu
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.bill.browser.databinding.ActivityMainBinding
+import com.google.android.material.bottomsheet.BottomSheetDialog
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+
+    private val tabs = mutableListOf<Tab>()
+    private var currentTab: Tab? = null
+    private var nextTabId = 1
 
     private val homepage: String by lazy { getString(R.string.default_homepage) }
 
@@ -25,33 +31,41 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        setupWebView()
         setupListeners()
+        addNewTab(homepage, select = true)
+    }
 
-        if (savedInstanceState == null) {
-            binding.webView.loadUrl(homepage)
-            binding.etUrl.setText(getString(R.string.app_name))
-        } else {
-            binding.webView.restoreState(savedInstanceState)
+    // --- WebView 工厂 ---
+
+    private fun createWebView(): WebView {
+        return WebView(this).apply {
+            layoutParams = android.view.ViewGroup.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            settings.apply {
+                javaScriptEnabled = true
+                domStorageEnabled = true
+                databaseEnabled = true
+                setSupportZoom(true)
+                builtInZoomControls = true
+                displayZoomControls = false
+                loadWithOverviewMode = true
+                useWideViewPort = true
+                mediaPlaybackRequiresUserGesture = true
+                allowFileAccess = true
+                allowContentAccess = true
+            }
         }
     }
 
-    private fun setupWebView() {
-        binding.webView.settings.apply {
-            javaScriptEnabled = true
-            domStorageEnabled = true
-            databaseEnabled = true
-            setSupportZoom(true)
-            builtInZoomControls = true
-            displayZoomControls = false
-            loadWithOverviewMode = true
-            useWideViewPort = true
-            mediaPlaybackRequiresUserGesture = true
-            allowFileAccess = true
-            allowContentAccess = true
-        }
+    // --- 标签管理 ---
 
-        binding.webView.webViewClient = object : WebViewClient() {
+    private fun addNewTab(url: String = homepage, select: Boolean = true): Tab {
+        val webView = createWebView()
+        val tab = Tab(id = nextTabId++, webView = webView, url = url)
+
+        webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(
                 view: WebView?, request: WebResourceRequest?
             ): Boolean {
@@ -60,52 +74,159 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-                binding.progressBar.apply {
-                    progress = 0
-                    visibility = View.VISIBLE
+                tab.url = url ?: ""
+                if (tab == currentTab) {
+                    binding.progressBar.apply {
+                        progress = 0
+                        visibility = View.VISIBLE
+                    }
+                    updateUrlBar(tab.url)
+                    updateNavButtons()
                 }
-                url?.let {
-                    binding.etUrl.setText(if (it.startsWith("file://")) getString(R.string.app_name) else it)
-                }
-                updateNavButtons()
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
-                binding.progressBar.visibility = View.GONE
-                updateNavButtons()
+                tab.url = url ?: ""
+                tab.title = view?.title ?: ""
+                if (tab == currentTab) {
+                    binding.progressBar.visibility = View.GONE
+                    updateUrlBar(tab.url)
+                    updateNavButtons()
+                }
             }
         }
 
-        binding.webView.webChromeClient = object : WebChromeClient() {
+        webView.webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
-                binding.progressBar.progress = newProgress
+                if (tab == currentTab) {
+                    binding.progressBar.progress = newProgress
+                }
             }
+
+            override fun onReceivedTitle(view: WebView?, title: String?) {
+                tab.title = title ?: ""
+            }
+        }
+
+        webView.loadUrl(url)
+        tabs.add(tab)
+
+        if (select) {
+            selectTab(tab)
+        } else {
+            updateTabCountBadge()
+        }
+
+        return tab
+    }
+
+    private fun selectTab(tab: Tab) {
+        if (currentTab == tab) return
+
+        currentTab?.webView?.let {
+            binding.webViewContainer.removeView(it)
+        }
+
+        binding.webViewContainer.addView(tab.webView)
+        currentTab = tab
+
+        updateUrlBar(tab.url)
+        updateNavButtons()
+        updateTabCountBadge()
+
+        if (tab.webView.progress in 1..99) {
+            binding.progressBar.visibility = View.VISIBLE
+            binding.progressBar.progress = tab.webView.progress
+        } else {
+            binding.progressBar.visibility = View.GONE
         }
     }
 
-    private fun setupListeners() {
-        binding.btnBack.setOnClickListener {
-            if (binding.webView.canGoBack()) binding.webView.goBack()
-        }
-        binding.btnForward.setOnClickListener {
-            if (binding.webView.canGoForward()) binding.webView.goForward()
-        }
-        binding.btnRefresh.setOnClickListener { binding.webView.reload() }
-        binding.btnHome.setOnClickListener { binding.webView.loadUrl(homepage) }
-        binding.btnGo.setOnClickListener { loadInputUrl() }
+    private fun closeTab(tab: Tab) {
+        val index = tabs.indexOf(tab)
+        if (index < 0) return
 
-        binding.btnTabs.setOnClickListener {
-            Toast.makeText(this, R.string.tabs_hint, Toast.LENGTH_SHORT).show()
+        if (tab == currentTab) {
+            val nextTab = when {
+                tabs.size > 1 && index < tabs.size - 1 -> tabs[index + 1]
+                tabs.size > 1 && index > 0 -> tabs[index - 1]
+                else -> null
+            }
+            if (nextTab != null) {
+                selectTab(nextTab)
+            } else {
+                currentTab = null
+                binding.webViewContainer.removeAllViews()
+                addNewTab(homepage, select = true)
+                return
+            }
         }
 
-        binding.btnMenu.setOnClickListener { showMenu() }
-
-        binding.etUrl.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == EditorInfo.IME_ACTION_GO) {
-                loadInputUrl()
-                true
-            } else false
+        binding.webViewContainer.removeView(tab.webView)
+        tab.webView.apply {
+            stopLoading()
+            loadUrl("about:blank")
+            clearHistory()
+            destroy()
         }
+        tabs.removeAt(index)
+        updateTabCountBadge()
+    }
+
+    // --- UI 更新 ---
+
+    private fun updateUrlBar(url: String) {
+        binding.etUrl.setText(
+            if (url.startsWith("file://")) getString(R.string.app_name) else url
+        )
+    }
+
+    private fun updateNavButtons() {
+        val wv = currentTab?.webView ?: return
+        binding.btnBack.isEnabled = wv.canGoBack()
+        binding.btnForward.isEnabled = wv.canGoForward()
+    }
+
+    private fun updateTabCountBadge() {
+        binding.tvTabCount.text = tabs.size.toString()
+        binding.tvTabCount.visibility = if (tabs.size <= 99) View.VISIBLE else View.GONE
+    }
+
+    // --- 弹层 ---
+
+    private fun showTabsDialog() {
+        val dialog = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.dialog_tabs, null)
+
+        val rvTabs = view.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.rvTabs)
+        rvTabs.layoutManager = LinearLayoutManager(this)
+
+        fun refreshAdapter() {
+            rvTabs.adapter = TabAdapter(
+                tabs = tabs.toList(),
+                currentTabId = currentTab?.id ?: -1,
+                onTabClick = { tabId ->
+                    tabs.find { it.id == tabId }?.let { selectTab(it) }
+                    dialog.dismiss()
+                },
+                onTabClose = { tabId ->
+                    tabs.find { it.id == tabId }?.let { closeTab(it) }
+                    refreshAdapter()
+                    if (tabs.isEmpty()) dialog.dismiss()
+                }
+            )
+        }
+        refreshAdapter()
+
+        val newTabAction: () -> Unit = {
+            addNewTab(homepage, select = true)
+            dialog.dismiss()
+        }
+        view.findViewById<View>(R.id.btnNewTab).setOnClickListener { newTabAction() }
+        view.findViewById<View>(R.id.tvNewTab).setOnClickListener { newTabAction() }
+
+        dialog.setContentView(view)
+        dialog.show()
     }
 
     private fun showMenu() {
@@ -122,27 +243,28 @@ class MainActivity : AppCompatActivity() {
         popup.show()
     }
 
-    private fun shareCurrentPage() {
-        val url = binding.webView.url ?: return
-        val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(android.content.Intent.EXTRA_TEXT, url)
+    // --- 事件监听 ---
+
+    private fun setupListeners() {
+        binding.btnBack.setOnClickListener {
+            currentTab?.webView?.takeIf { it.canGoBack() }?.goBack()
         }
-        startActivity(android.content.Intent.createChooser(intent, getString(R.string.share)))
-    }
+        binding.btnForward.setOnClickListener {
+            currentTab?.webView?.takeIf { it.canGoForward() }?.goForward()
+        }
+        binding.btnRefresh.setOnClickListener { currentTab?.webView?.reload() }
+        binding.btnHome.setOnClickListener { currentTab?.webView?.loadUrl(homepage) }
+        binding.btnGo.setOnClickListener { loadInputUrl() }
 
-    private fun copyUrl() {
-        val url = binding.webView.url ?: return
-        val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
-        val clip = android.content.ClipData.newPlainText("URL", url)
-        clipboard.setPrimaryClip(clip)
-        Toast.makeText(this, R.string.copied, Toast.LENGTH_SHORT).show()
-    }
+        binding.btnTabs.setOnClickListener { showTabsDialog() }
+        binding.btnMenu.setOnClickListener { showMenu() }
 
-    private fun clearHistory() {
-        binding.webView.clearHistory()
-        updateNavButtons()
-        Toast.makeText(this, R.string.history_cleared, Toast.LENGTH_SHORT).show()
+        binding.etUrl.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_GO) {
+                loadInputUrl()
+                true
+            } else false
+        }
     }
 
     private fun loadInputUrl() {
@@ -154,36 +276,65 @@ class MainActivity : AppCompatActivity() {
             raw.contains(".") && !raw.contains(" ") -> "https://$raw"
             else -> "https://www.baidu.com/s?wd=${java.net.URLEncoder.encode(raw, "UTF-8")}"
         }
-        binding.webView.loadUrl(url)
-        binding.webView.requestFocus()
+        currentTab?.webView?.loadUrl(url)
+        currentTab?.webView?.requestFocus()
     }
 
-    private fun updateNavButtons() {
-        binding.btnBack.isEnabled = binding.webView.canGoBack()
-        binding.btnForward.isEnabled = binding.webView.canGoForward()
+    // --- 菜单功能 ---
+
+    private fun shareCurrentPage() {
+        val url = currentTab?.url ?: return
+        val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(android.content.Intent.EXTRA_TEXT, url)
+        }
+        startActivity(android.content.Intent.createChooser(intent, getString(R.string.share)))
     }
+
+    private fun copyUrl() {
+        val url = currentTab?.url ?: return
+        val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        val clip = android.content.ClipData.newPlainText("URL", url)
+        clipboard.setPrimaryClip(clip)
+        Toast.makeText(this, R.string.copied, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun clearHistory() {
+        currentTab?.webView?.clearHistory()
+        updateNavButtons()
+        Toast.makeText(this, R.string.history_cleared, Toast.LENGTH_SHORT).show()
+    }
+
+    // --- 生命周期 & 按键 ---
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        if (keyCode == KeyEvent.KEYCODE_BACK && binding.webView.canGoBack()) {
-            binding.webView.goBack()
-            return true
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            currentTab?.webView?.let {
+                if (it.canGoBack()) {
+                    it.goBack()
+                    return true
+                }
+            }
         }
         return super.onKeyDown(keyCode, event)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        binding.webView.saveState(outState)
+        currentTab?.webView?.saveState(outState)
     }
 
     override fun onDestroy() {
-        binding.webView.apply {
-            stopLoading()
-            loadUrl("about:blank")
-            clearHistory()
-            (parent as? android.view.ViewGroup)?.removeView(this)
-            destroy()
+        tabs.forEach { tab ->
+            tab.webView.apply {
+                stopLoading()
+                loadUrl("about:blank")
+                clearHistory()
+                (parent as? android.view.ViewGroup)?.removeView(this)
+                destroy()
+            }
         }
+        tabs.clear()
         super.onDestroy()
     }
 }

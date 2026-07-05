@@ -80,9 +80,9 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
-    <!-- WebView -->
-    <WebView
-        android:id="@+id/webView"
+    <!-- WebView 容器 -->
+    <FrameLayout
+        android:id="@+id/webViewContainer"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />
@@ -126,15 +126,35 @@
             android:contentDescription="@string/cd_home"
             android:scaleType="centerInside" />
 
-        <ImageButton
-            android:id="@+id/btnTabs"
+        <!-- 标签按钮 + 数字角标 -->
+        <FrameLayout
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:src="@drawable/ic_tabs"
-            android:background="?attr/selectableItemBackground"
-            android:contentDescription="@string/cd_tabs"
-            android:scaleType="centerInside" />
+            android:layout_weight="1">
+
+            <ImageButton
+                android:id="@+id/btnTabs"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:src="@drawable/ic_tabs"
+                android:background="?attr/selectableItemBackground"
+                android:contentDescription="@string/cd_tabs"
+                android:scaleType="centerInside" />
+
+            <TextView
+                android:id="@+id/tvTabCount"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_gravity="top|end"
+                android:layout_marginTop="6dp"
+                android:layout_marginEnd="10dp"
+                android:background="@drawable/bg_tab_badge"
+                android:gravity="center"
+                android:textColor="@android:color/white"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:text="1" />
+        </FrameLayout>
 
         <ImageButton
             android:id="@+id/btnMenu"
