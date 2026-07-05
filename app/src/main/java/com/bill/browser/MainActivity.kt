@@ -69,8 +69,7 @@ class MainActivity : AppCompatActivity() {
             override fun shouldOverrideUrlLoading(
                 view: WebView?, request: WebResourceRequest?
             ): Boolean {
-                val url = request?.url?.toString().orEmpty()
-                return !url.startsWith("http://") && !url.startsWith("https://")
+                return false
             }
 
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
