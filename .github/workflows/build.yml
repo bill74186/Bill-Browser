@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    name: 编译 APK
+    name: 编译 Release APK
     runs-on: ubuntu-latest
 
     steps:
@@ -31,22 +31,34 @@ jobs:
           gradle-version: '8.5'
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: 构建 Debug APK
-        run: gradle assembleDebug --no-daemon --stacktrace
+      # CI 上没有 debug.keystore 时创建一个，确保 release 能用 debug 签名产出可安装 APK
+      - name: 准备签名 keystore
+        run: |
+          if [ ! -f ~/.android/debug.keystore ]; then
+            mkdir -p ~/.android
+            keytool -genkey -v -keystore ~/.android/debug.keystore \
+              -storepass android -alias androiddebugkey -keypass android \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          echo "KEYSTORE_FILE=$HOME/.android/debug.keystore" >> $GITHUB_ENV
+          echo "KEYSTORE_PASSWORD=android" >> $GITHUB_ENV
+          echo "KEY_ALIAS=androiddebugkey" >> $GITHUB_ENV
+          echo "KEY_PASSWORD=android" >> $GITHUB_ENV
 
       - name: 构建 Release APK
         run: gradle assembleRelease --no-daemon --stacktrace
 
-      - name: 上传 Debug APK 产物
-        uses: actions/upload-artifact@v4
-        with:
-          name: 比尔浏览器-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
+      - name: 重命名 APK（带版本号）
+        run: |
+          mkdir -p artifacts
+          VERSION=$(grep versionName app/build.gradle.kts | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          cp app/build/outputs/apk/release/*.apk "artifacts/比尔浏览器-v${VERSION}.apk"
+          ls -la artifacts/
 
       - name: 上传 Release APK 产物
         uses: actions/upload-artifact@v4
         with:
-          name: 比尔浏览器-release-apk-unsigned
-          path: app/build/outputs/apk/release/*.apk
-          if-no-files-found: warn
+          name: 比尔浏览器-release-apk
+          path: artifacts/*.apk
+          if-no-files-found: error
