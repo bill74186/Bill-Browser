@@ -3,81 +3,104 @@ package com.bill.browser
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.view.KeyEvent
+import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.EditText
-import android.widget.ImageButton
-import android.widget.ProgressBar
 import androidx.appcompat.app.AppCompatActivity
+import com.bill.browser.databinding.ActivityMainBinding
 
+/**
+ * 浏览器主界面。
+ *
+ * 使用 ViewBinding 替代 findViewById，统一通过 [binding] 访问视图，
+ * 避免反复查找、降低空指针风险。
+ */
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var webView: WebView
-    private lateinit var etUrl: EditText
-    private lateinit var progressBar: ProgressBar
-    private lateinit var btnBack: ImageButton
-    private lateinit var btnForward: ImageButton
-    private lateinit var btnGo: ImageButton
+    private lateinit var binding: ActivityMainBinding
+
+    private val homepage: String by lazy { getString(R.string.default_homepage) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-
-        webView = findViewById(R.id.webView)
-        etUrl = findViewById(R.id.etUrl)
-        progressBar = findViewById(R.id.progressBar)
-        btnBack = findViewById(R.id.btnBack)
-        btnForward = findViewById(R.id.btnForward)
-        btnGo = findViewById(R.id.btnGo)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
         setupWebView()
         setupListeners()
 
-        val defaultUrl = getString(R.string.default_homepage)
-        webView.loadUrl(defaultUrl)
-        etUrl.setText(defaultUrl)
+        // 恢复历史状态，避免旋转后重新加载首页
+        if (savedInstanceState == null) {
+            binding.webView.loadUrl(homepage)
+            binding.etUrl.setText(homepage)
+        } else {
+            binding.webView.restoreState(savedInstanceState)
+        }
     }
 
     private fun setupWebView() {
-        webView.settings.apply {
+        binding.webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
+            databaseEnabled = true
             setSupportZoom(true)
             builtInZoomControls = true
             displayZoomControls = false
             loadWithOverviewMode = true
             useWideViewPort = true
-            mediaPlaybackRequiresUserGesture = false
+            mediaPlaybackRequiresUserGesture = true
+            // 安全性：禁止文件协议越权访问
+            allowFileAccess = false
+            allowContentAccess = false
         }
 
-        webView.webViewClient = object : WebViewClient() {
+        binding.webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(
+                view: WebView?, request: WebResourceRequest?
+            ): Boolean {
+                view?.loadUrl(request?.url?.toString().orEmpty())
+                return true
+            }
+
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-                progressBar.visibility = ProgressBar.VISIBLE
-                url?.let { etUrl.setText(it) }
+                binding.progressBar.apply {
+                    progress = 0
+                    visibility = View.VISIBLE
+                }
+                url?.let { binding.etUrl.setText(it) }
+                updateNavButtons()
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
-                progressBar.visibility = ProgressBar.GONE
+                binding.progressBar.visibility = View.GONE
                 updateNavButtons()
             }
         }
 
-        webView.webChromeClient = object : WebChromeClient() {
+        binding.webView.webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
-                progressBar.progress = newProgress
+                binding.progressBar.progress = newProgress
             }
         }
     }
 
     private fun setupListeners() {
-        btnBack.setOnClickListener { if (webView.canGoBack()) webView.goBack() }
-        btnForward.setOnClickListener { if (webView.canGoForward()) webView.goForward() }
+        binding.btnBack.setOnClickListener {
+            if (binding.webView.canGoBack()) binding.webView.goBack()
+        }
+        binding.btnForward.setOnClickListener {
+            if (binding.webView.canGoForward()) binding.webView.goForward()
+        }
+        binding.btnRefresh.setOnClickListener { binding.webView.reload() }
+        binding.btnHome.setOnClickListener {
+            binding.webView.loadUrl(homepage)
+        }
+        binding.btnGo.setOnClickListener { loadInputUrl() }
 
-        btnGo.setOnClickListener { loadInputUrl() }
-
-        etUrl.setOnEditorActionListener { _, actionId, _ ->
+        binding.etUrl.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_GO) {
                 loadInputUrl()
                 true
@@ -85,32 +108,48 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * 解析用户输入：含 scheme 视为 URL，否则按搜索关键词处理。
+     */
     private fun loadInputUrl() {
-        var url = etUrl.text.toString().trim()
-        if (url.isEmpty()) return
+        val raw = binding.etUrl.text.toString().trim()
+        if (raw.isEmpty()) return
 
-        if (!url.startsWith("http://") && !url.startsWith("https://")) {
-            url = "https://$url"
+        val url = when {
+            raw.startsWith("http://") || raw.startsWith("https://") -> raw
+            raw.contains(".") && !raw.contains(" ") -> "https://$raw"
+            else -> "https://www.baidu.com/s?wd=${java.net.URLEncoder.encode(raw, "UTF-8")}"
         }
-        webView.loadUrl(url)
-        webView.requestFocus()
+        binding.webView.loadUrl(url)
+        binding.webView.requestFocus()
     }
 
     private fun updateNavButtons() {
-        btnBack.isEnabled = webView.canGoBack()
-        btnForward.isEnabled = webView.canGoForward()
+        binding.btnBack.isEnabled = binding.webView.canGoBack()
+        binding.btnForward.isEnabled = binding.webView.canGoForward()
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        if (keyCode == KeyEvent.KEYCODE_BACK && webView.canGoBack()) {
-            webView.goBack()
+        if (keyCode == KeyEvent.KEYCODE_BACK && binding.webView.canGoBack()) {
+            binding.webView.goBack()
             return true
         }
         return super.onKeyDown(keyCode, event)
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        binding.webView.saveState(outState)
+    }
+
     override fun onDestroy() {
-        webView.destroy()
+        binding.webView.apply {
+            stopLoading()
+            loadUrl("about:blank")
+            clearHistory()
+            (parent as? android.view.ViewGroup)?.removeView(this)
+            destroy()
+        }
         super.onDestroy()
     }
 }

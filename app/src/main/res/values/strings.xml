@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">比尔浏览器</string>
+    <string name="default_homepage">https://www.baidu.com</string>
+    <string name="hint_url">输入网址或搜索</string>
+    <string name="cd_back">后退</string>
+    <string name="cd_forward">前进</string>
+    <string name="cd_refresh">刷新</string>
+    <string name="cd_home">主页</string>
+    <string name="cd_go">前往</string>
+</resources>

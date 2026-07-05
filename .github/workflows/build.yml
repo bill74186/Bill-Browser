@@ -25,14 +25,28 @@ jobs:
       - name: 配置 Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: 赋予 Gradle 执行权限
-        run: chmod +x ./gradlew
+      - name: 配置 Gradle 8.5（含依赖缓存）
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.5'
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: 构建 Debug APK
-        run: ./gradlew assembleDebug --no-daemon
+        run: gradle assembleDebug --no-daemon --stacktrace
 
-      - name: 上传 APK 产物
+      - name: 构建 Release APK
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: 上传 Debug APK 产物
         uses: actions/upload-artifact@v4
         with:
-          name: 比尔浏览器-v1.0-debug.apk
+          name: 比尔浏览器-debug-apk
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: 上传 Release APK 产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: 比尔浏览器-release-apk-unsigned
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: warn
