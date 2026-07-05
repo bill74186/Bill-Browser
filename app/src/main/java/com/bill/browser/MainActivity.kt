@@ -9,15 +9,11 @@ import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.PopupMenu
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.bill.browser.databinding.ActivityMainBinding
 
-/**
- * 浏览器主界面。
- *
- * 使用 ViewBinding 替代 findViewById，统一通过 [binding] 访问视图，
- * 避免反复查找、降低空指针风险。
- */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
@@ -32,10 +28,9 @@ class MainActivity : AppCompatActivity() {
         setupWebView()
         setupListeners()
 
-        // 恢复历史状态，避免旋转后重新加载首页
         if (savedInstanceState == null) {
             binding.webView.loadUrl(homepage)
-            binding.etUrl.setText(homepage)
+            binding.etUrl.setText(getString(R.string.app_name))
         } else {
             binding.webView.restoreState(savedInstanceState)
         }
@@ -96,10 +91,14 @@ class MainActivity : AppCompatActivity() {
             if (binding.webView.canGoForward()) binding.webView.goForward()
         }
         binding.btnRefresh.setOnClickListener { binding.webView.reload() }
-        binding.btnHome.setOnClickListener {
-            binding.webView.loadUrl(homepage)
-        }
+        binding.btnHome.setOnClickListener { binding.webView.loadUrl(homepage) }
         binding.btnGo.setOnClickListener { loadInputUrl() }
+
+        binding.btnTabs.setOnClickListener {
+            Toast.makeText(this, R.string.tabs_hint, Toast.LENGTH_SHORT).show()
+        }
+
+        binding.btnMenu.setOnClickListener { showMenu() }
 
         binding.etUrl.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_GO) {
@@ -109,9 +108,43 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * 解析用户输入：含 scheme 视为 URL，否则按搜索关键词处理。
-     */
+    private fun showMenu() {
+        val popup = PopupMenu(this, binding.btnMenu)
+        popup.menuInflater.inflate(R.menu.browser_menu, popup.menu)
+        popup.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                R.id.action_share -> shareCurrentPage()
+                R.id.action_copy_url -> copyUrl()
+                R.id.action_clear_history -> clearHistory()
+            }
+            true
+        }
+        popup.show()
+    }
+
+    private fun shareCurrentPage() {
+        val url = binding.webView.url ?: return
+        val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(android.content.Intent.EXTRA_TEXT, url)
+        }
+        startActivity(android.content.Intent.createChooser(intent, getString(R.string.share)))
+    }
+
+    private fun copyUrl() {
+        val url = binding.webView.url ?: return
+        val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        val clip = android.content.ClipData.newPlainText("URL", url)
+        clipboard.setPrimaryClip(clip)
+        Toast.makeText(this, R.string.copied, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun clearHistory() {
+        binding.webView.clearHistory()
+        updateNavButtons()
+        Toast.makeText(this, R.string.history_cleared, Toast.LENGTH_SHORT).show()
+    }
+
     private fun loadInputUrl() {
         val raw = binding.etUrl.text.toString().trim()
         if (raw.isEmpty()) return

@@ -6,5 +6,14 @@
     <string name="cd_forward">前进</string>
     <string name="cd_refresh">刷新</string>
     <string name="cd_home">主页</string>
+    <string name="cd_tabs">标签页</string>
+    <string name="cd_menu">菜单</string>
     <string name="cd_go">前往</string>
+    <string name="tabs_hint">多标签功能开发中</string>
+    <string name="menu_share">分享页面</string>
+    <string name="menu_copy_url">复制链接</string>
+    <string name="menu_clear_history">清除历史</string>
+    <string name="share">分享到</string>
+    <string name="copied">链接已复制</string>
+    <string name="history_cleared">历史记录已清除</string>
 </resources>

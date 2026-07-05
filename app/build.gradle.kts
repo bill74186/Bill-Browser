@@ -19,8 +19,8 @@ android {
         applicationId = "com.bill.browser"
         minSdk = 23          // Android 6.0
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.2"
+        versionCode = 4
+        versionName = "1.3"
     }
 
     signingConfigs {
